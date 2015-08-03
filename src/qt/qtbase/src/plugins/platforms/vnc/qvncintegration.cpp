@@ -42,71 +42,82 @@
 #include "qvncintegration.h"
 #include "qvncbackingstore.h"
 
-#include <private/qpixmap_raster_p.h>
-
 #if defined(Q_OS_MAC)
 # include <QtPlatformSupport/private/qcoretextfontdatabase_p.h>
 #else
 # include <QtPlatformSupport/private/qgenericunixfontdatabase_p.h>
 #endif
 
+//#include <QtPlatformSupport/private/qgenericunixservices_p.h>
 #include <QtPlatformSupport/private/qgenericunixeventdispatcher_p.h>
 
-QVNCIntegration::QVNCIntegration()
+#include <QtPlatformSupport/private/qfbbackingstore_p.h>
+#include <QtPlatformSupport/private/qfbwindow_p.h>
+#include <QtPlatformSupport/private/qfbcursor_p.h>
+
+#include <QtGui/private/qguiapplication_p.h>
+#include <qpa/qplatforminputcontextfactory_p.h>
+#include <QDebug>
+
+QT_BEGIN_NAMESPACE
+
+QPlatformFontDatabase *getPlatformDatabase()
 {
-    QVNCScreen *mPrimaryScreen = new QVNCScreen();
+    QPlatformFontDatabase *db;
+#if defined(Q_OS_MAC)
+    db = new QCoreTextFontDatabase();
+#else
+    db = new QGenericUnixFontDatabase();
+#endif
+    return db;
+}
 
-    // Simulate typical desktop screen
-    int width = 1024;
-    int height = 768;
-    int dpi = 72;
-    qreal physicalWidth = width * 25.4 / dpi;
-    qreal physicalHeight = height * 25.4 / dpi;
-    mPrimaryScreen->mGeometry = QRect(0, 0, width, height);
-    mPrimaryScreen->mPhysicalSize = QSizeF(physicalWidth, physicalHeight);
-
-    mPrimaryScreen->mDepth = 32;
-    mPrimaryScreen->mFormat = QImage::Format_ARGB32_Premultiplied;
-
-    screenAdded(mPrimaryScreen);
-
-    m_qvncPlatformNativeInterface = new QVNCPlatformNativeInterface();
+QVNCIntegration::QVNCIntegration(const QStringList &paramList)
+    : m_fontDb(getPlatformDatabase())
+//    : m_fontDb(getPlatformDatabase()),
+//      m_services(new QGenericUnixServices)
+{
+            qWarning() << __PRETTY_FUNCTION__;
+    m_primaryScreen = new QVNCScreen(paramList);
 }
 
 QVNCIntegration::~QVNCIntegration()
 {
-    delete m_qvncPlatformNativeInterface;
+    delete m_primaryScreen;
+}
+
+void QVNCIntegration::initialize()
+{
+            qWarning() << __PRETTY_FUNCTION__;
+    if (m_primaryScreen->initialize())
+        screenAdded(m_primaryScreen);
+    else
+        qWarning("vnc: Failed to initialize screen");
+
+    m_inputContext = QPlatformInputContextFactory::create();
+    m_nativeInterface.reset(new QPlatformNativeInterface);
 }
 
 bool QVNCIntegration::hasCapability(QPlatformIntegration::Capability cap) const
 {
+            qWarning() << __PRETTY_FUNCTION__;
     switch (cap) {
     case ThreadedPixmaps: return true;
+    case WindowManagement: return false;
     default: return QPlatformIntegration::hasCapability(cap);
     }
 }
 
+QPlatformBackingStore *QVNCIntegration::createPlatformBackingStore(QWindow *window) const
+{
+            qWarning() << __PRETTY_FUNCTION__;
+    return new QFbBackingStore(window);
+}
+
 QPlatformWindow* QVNCIntegration::createPlatformWindow(QWindow* window) const
 {
-    return new QPlatformWindow(window);
-}
-
-QPlatformBackingStore* QVNCIntegration::createPlatformBackingStore(QWindow* window) const
-{
-    return new QVNCBackingStore(window);
-}
-
-QPlatformFontDatabase *QVNCIntegration::fontDatabase() const
-{
-    static QPlatformFontDatabase *db = 0;
-    if (!db) {
-#if defined(Q_OS_MAC)
-        db = new QCoreTextFontDatabase();
-#else
-        db = new QGenericUnixFontDatabase();
-#endif
-    }
-    return db;
+            qWarning() << __PRETTY_FUNCTION__;
+    return new QFbWindow(window);
 }
 
 QAbstractEventDispatcher *QVNCIntegration::createEventDispatcher() const
@@ -114,7 +125,31 @@ QAbstractEventDispatcher *QVNCIntegration::createEventDispatcher() const
     return createUnixEventDispatcher();
 }
 
+QList<QPlatformScreen *> QVNCIntegration::screens() const
+{
+            qWarning() << __PRETTY_FUNCTION__;
+    QList<QPlatformScreen *> list;
+    list.append(m_primaryScreen);
+    return list;
+}
+
+QPlatformFontDatabase *QVNCIntegration::fontDatabase() const
+{
+            qWarning() << __PRETTY_FUNCTION__;
+    return m_fontDb.data();
+}
+
+/*
+QPlatformServices *QVNCIntegration::services() const
+{
+    return m_services.data();
+}
+*/
+
 QPlatformNativeInterface *QVNCIntegration::nativeInterface() const
 {
-    return m_qvncPlatformNativeInterface;
+            qWarning() << __PRETTY_FUNCTION__;
+    return m_nativeInterface.data();
 }
+
+QT_END_NAMESPACE

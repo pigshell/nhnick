@@ -41,35 +41,99 @@
 
 
 #include "qvncbackingstore.h"
-#include <qpa/qplatformscreen.h>
-#include <private/qguiapplication_p.h>
+#include <QtPlatformSupport/private/qfbcursor_p.h>
+#include <QtCore/QRegularExpression>
+#include <QtGui/QPainter>
 #include <QDebug>
 
-QVNCBackingStore::QVNCBackingStore(QWindow *window)
-    : QPlatformBackingStore(window)
+QT_BEGIN_NAMESPACE
+
+QVNCScreen::QVNCScreen(const QStringList &args)
+    : mArgs(args)
 {
-    qWarning() << "Created VNC Backing Store";
+            qWarning() << __PRETTY_FUNCTION__;
 }
 
-QVNCBackingStore::~QVNCBackingStore()
+QVNCScreen::~QVNCScreen()
 {
+            qWarning() << __PRETTY_FUNCTION__;
 }
 
-QPaintDevice *QVNCBackingStore::paintDevice()
+static inline int defaultWidth() { return 1024; }
+static inline int defaultHeight() { return 768; }
+static inline int defaultDisplay() { return 0; }
+
+static void usage()
 {
-    return &mImage;
+    qWarning() << "VNC Platform Integration options:";
+    qWarning() << "    size=<Width>x<Height> - set the display width and height";
+    qWarning() << "         defaults to" << defaultWidth() << "x" << defaultHeight();
+    qWarning() << "    display=<ID> - set the VNC display port to ID + 5900";
+    qWarning() << "         defaults to" << defaultDisplay();
 }
 
-void QVNCBackingStore::flush(QWindow *window, const QRegion &region, const QPoint &offset)
+bool QVNCScreen::initialize()
 {
-    Q_UNUSED(window);
-    Q_UNUSED(region);
-    Q_UNUSED(offset);
+            qWarning() << __PRETTY_FUNCTION__;
+
+    QRegularExpression sizeRx(QLatin1String("size=(\\d+)x(\\d+)"));
+    QRegularExpression displayRx(QLatin1String("display=(\\d+)"));
+    QRect userGeometry;
+    bool showUsage = false;
+    int display = defaultDisplay();
+
+    foreach (const QString &arg, mArgs) {
+        QRegularExpressionMatch match;
+        if (arg.contains(sizeRx, &match)) {
+            userGeometry.setSize(QSize(match.captured(1).toInt(), match.captured(2).toInt()));
+            userGeometry.setTopLeft(QPoint(0, 0));
+        } else if (arg.contains(displayRx, &match)) {
+            display = match.captured(1).toInt();
+        } else {
+            qWarning() << "Unknown VNC options:" << arg;
+            showUsage = true;
+        }
+    }
+
+    if (showUsage) {
+        usage();
+    }
+
+    if (!userGeometry.isValid()) {
+        userGeometry.setSize(QSize(defaultWidth(), defaultHeight()));
+        userGeometry.setTopLeft(QPoint(0, 0));
+    }
+
+    mGeometry = userGeometry;
+    mDepth = 32;
+    mFormat = QImage::Format_RGB32;
+    mPhysicalSize = userGeometry.size() * 254 / 720;
+
+    QFbScreen::initializeCompositor();
+    mCursor = new QFbCursor(this);
+
+    return true;
 }
 
-void QVNCBackingStore::resize(const QSize &size, const QRegion &)
+
+QRegion QVNCScreen::doRedraw()
 {
-    QImage::Format format = QGuiApplication::primaryScreen()->handle()->format();
-    if (mImage.size() != size)
-        mImage = QImage(size, format);
+            qWarning() << __PRETTY_FUNCTION__;
+
+    QRegion touched = QFbScreen::doRedraw();
+
+    if (touched.isEmpty())
+        return touched;
+/*
+    if (!mBlitter)
+        mBlitter = new QPainter(&mFbScreenImage);
+
+    QVector<QRect> rects = touched.rects();
+    for (int i = 0; i < rects.size(); i++)
+        mBlitter->drawImage(rects[i], *mScreenImage, rects[i]);
+*/
+    mScreenImage->save(QString("/tmp/qt-snap.png"));
+    return touched;
 }
+
+QT_END_NAMESPACE

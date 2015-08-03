@@ -49,47 +49,36 @@
 #include <QPixmap>
 
 class QWindowSurface;
-
-class QVNCPlatformNativeInterface : public QPlatformNativeInterface
-{
-public:
-};
-
-class QVNCScreen : public QPlatformScreen
-{
-public:
-    QVNCScreen()
-        : mDepth(32), mFormat(QImage::Format_ARGB32_Premultiplied) {}
-
-    QRect geometry() const { return mGeometry; }
-    QSizeF physicalSize() const { return mPhysicalSize; }
-    int depth() const { return mDepth; }
-    QImage::Format format() const { return mFormat; }
-
-public:
-    QRect mGeometry;
-    int mDepth;
-    QImage::Format mFormat;
-    QSizeF mPhysicalSize;
-};
+class QAbstractEventDispatcher;
+class QVNCScreen;
 
 class QVNCIntegration : public QPlatformIntegration
 {
 public:
-    QVNCIntegration();
+    QVNCIntegration(const QStringList &paramList);
     ~QVNCIntegration();
 
-    bool hasCapability(QPlatformIntegration::Capability cap) const;
+    void initialize() Q_DECL_OVERRIDE;
+    bool hasCapability(QPlatformIntegration::Capability cap) const Q_DECL_OVERRIDE;
 
-    QPlatformWindow *createPlatformWindow(QWindow *window) const;
-    QPlatformBackingStore *createPlatformBackingStore(QWindow *window) const;
-    QAbstractEventDispatcher *createEventDispatcher() const;
+    QPlatformWindow *createPlatformWindow(QWindow *window) const Q_DECL_OVERRIDE;
+    QPlatformBackingStore *createPlatformBackingStore(QWindow *window) const Q_DECL_OVERRIDE;
 
-    QPlatformFontDatabase *fontDatabase() const;
-    QPlatformNativeInterface *nativeInterface() const;
+    QAbstractEventDispatcher *createEventDispatcher() const Q_DECL_OVERRIDE;
+
+    QPlatformFontDatabase *fontDatabase() const Q_DECL_OVERRIDE;
+//    QPlatformServices *services() const Q_DECL_OVERRIDE;
+    QPlatformInputContext *inputContext() const Q_DECL_OVERRIDE { return m_inputContext; }
+
+    QPlatformNativeInterface *nativeInterface() const Q_DECL_OVERRIDE;
+
+    QList<QPlatformScreen *> screens() const;
 
 private:
-    QVNCPlatformNativeInterface *m_qvncPlatformNativeInterface;
+    QVNCScreen *m_primaryScreen;
+    QPlatformInputContext *m_inputContext;
+    QScopedPointer<QPlatformFontDatabase> m_fontDb;
+//    QScopedPointer<QPlatformServices> m_services;
+    QScopedPointer<QPlatformNativeInterface> m_nativeInterface;
 };
-
 #endif // QVNCINTEGRATION_H

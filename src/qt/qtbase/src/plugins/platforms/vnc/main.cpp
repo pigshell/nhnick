@@ -55,7 +55,7 @@ QVNCIntegration *QVNCIntegrationPlugin::create(const QString& system, const QStr
 {
     Q_UNUSED(paramList)
     if (!system.compare(QLatin1String("vnc"), Qt::CaseInsensitive))
-        return new QVNCIntegration();
+        return new QVNCIntegration(paramList);
 
     return 0;
 }

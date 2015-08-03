@@ -42,22 +42,39 @@
 #ifndef QVNCBACKINGSTORE_H
 #define QVNCBACKINGSTORE_H
 
-#include <qpa/qplatformbackingstore.h>
-#include <qpa/qplatformwindow.h>
-#include <QImage>
+#include <QtPlatformSupport/private/qfbscreen_p.h>
 
-class QVNCBackingStore : public QPlatformBackingStore
+QT_BEGIN_NAMESPACE
+
+class QPainter;
+class QFbCursor;
+
+class QVNCScreen : public QFbScreen
 {
+    Q_OBJECT
 public:
-    QVNCBackingStore(QWindow *window);
-    ~QVNCBackingStore();
+    QVNCScreen(const QStringList &args);
+    ~QVNCScreen();
 
-    QPaintDevice *paintDevice();
-    void flush(QWindow *window, const QRegion &region, const QPoint &offset);
-    void resize(const QSize &size, const QRegion &staticContents);
+    bool initialize();
+
+public slots:
+    QRegion doRedraw();
 
 private:
-    QImage mImage;
+    QStringList mArgs;
+
+    QImage mFbScreenImage;
+    int mBytesPerLine;
+
+    struct {
+        uchar *data;
+        int offset, size;
+    } mMmap;
+
+    QPainter *mBlitter;
 };
+
+QT_END_NAMESPACE
 
 #endif // QVNCBACKINGSTORE_H
