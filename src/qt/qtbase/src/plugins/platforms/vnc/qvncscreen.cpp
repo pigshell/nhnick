@@ -40,8 +40,9 @@
 ****************************************************************************/
 
 
-#include "qvncbackingstore.h"
-#include <QtPlatformSupport/private/qfbcursor_p.h>
+#include "qvncscreen.h"
+#include "qvnccursor.h"
+#include "qvncserver.h"
 #include <QtCore/QRegularExpression>
 #include <QtGui/QPainter>
 #include <QDebug>
@@ -51,12 +52,10 @@ QT_BEGIN_NAMESPACE
 QVNCScreen::QVNCScreen(const QStringList &args)
     : mArgs(args)
 {
-            qWarning() << __PRETTY_FUNCTION__;
 }
 
 QVNCScreen::~QVNCScreen()
 {
-            qWarning() << __PRETTY_FUNCTION__;
 }
 
 static inline int defaultWidth() { return 1024; }
@@ -74,8 +73,6 @@ static void usage()
 
 bool QVNCScreen::initialize()
 {
-            qWarning() << __PRETTY_FUNCTION__;
-
     QRegularExpression sizeRx(QLatin1String("size=(\\d+)x(\\d+)"));
     QRegularExpression displayRx(QLatin1String("display=(\\d+)"));
     QRect userGeometry;
@@ -110,7 +107,10 @@ bool QVNCScreen::initialize()
     mPhysicalSize = userGeometry.size() * 254 / 720;
 
     QFbScreen::initializeCompositor();
-    mCursor = new QFbCursor(this);
+    d_ptr = new QVNCScreenPrivate(this);
+    QVNCCursor *c = new QVNCCursor(d_ptr->vncServer, this);
+    mCursor = c;
+    d_ptr->vncServer->setCursor(c);
 
     return true;
 }
@@ -118,22 +118,20 @@ bool QVNCScreen::initialize()
 
 QRegion QVNCScreen::doRedraw()
 {
-            qWarning() << __PRETTY_FUNCTION__;
-
     QRegion touched = QFbScreen::doRedraw();
 
     if (touched.isEmpty())
         return touched;
-/*
-    if (!mBlitter)
-        mBlitter = new QPainter(&mFbScreenImage);
 
     QVector<QRect> rects = touched.rects();
     for (int i = 0; i < rects.size(); i++)
-        mBlitter->drawImage(rects[i], *mScreenImage, rects[i]);
-*/
-    mScreenImage->save(QString("/tmp/qt-snap.png"));
+        d_ptr->setDirty(rects[i]);
     return touched;
+}
+
+QVNCDirtyMap *QVNCScreen::dirtyMap()
+{
+    return d_ptr->dirty;
 }
 
 QT_END_NAMESPACE

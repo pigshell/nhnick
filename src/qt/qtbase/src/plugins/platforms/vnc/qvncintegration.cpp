@@ -40,7 +40,7 @@
 ****************************************************************************/
 
 #include "qvncintegration.h"
-#include "qvncbackingstore.h"
+#include "qvncscreen.h"
 
 #if defined(Q_OS_MAC)
 # include <QtPlatformSupport/private/qcoretextfontdatabase_p.h>
@@ -48,7 +48,6 @@
 # include <QtPlatformSupport/private/qgenericunixfontdatabase_p.h>
 #endif
 
-//#include <QtPlatformSupport/private/qgenericunixservices_p.h>
 #include <QtPlatformSupport/private/qgenericunixeventdispatcher_p.h>
 
 #include <QtPlatformSupport/private/qfbbackingstore_p.h>
@@ -74,10 +73,7 @@ QPlatformFontDatabase *getPlatformDatabase()
 
 QVNCIntegration::QVNCIntegration(const QStringList &paramList)
     : m_fontDb(getPlatformDatabase())
-//    : m_fontDb(getPlatformDatabase()),
-//      m_services(new QGenericUnixServices)
 {
-            qWarning() << __PRETTY_FUNCTION__;
     m_primaryScreen = new QVNCScreen(paramList);
 }
 
@@ -88,7 +84,6 @@ QVNCIntegration::~QVNCIntegration()
 
 void QVNCIntegration::initialize()
 {
-            qWarning() << __PRETTY_FUNCTION__;
     if (m_primaryScreen->initialize())
         screenAdded(m_primaryScreen);
     else
@@ -100,7 +95,6 @@ void QVNCIntegration::initialize()
 
 bool QVNCIntegration::hasCapability(QPlatformIntegration::Capability cap) const
 {
-            qWarning() << __PRETTY_FUNCTION__;
     switch (cap) {
     case ThreadedPixmaps: return true;
     case WindowManagement: return false;
@@ -110,13 +104,11 @@ bool QVNCIntegration::hasCapability(QPlatformIntegration::Capability cap) const
 
 QPlatformBackingStore *QVNCIntegration::createPlatformBackingStore(QWindow *window) const
 {
-            qWarning() << __PRETTY_FUNCTION__;
     return new QFbBackingStore(window);
 }
 
 QPlatformWindow* QVNCIntegration::createPlatformWindow(QWindow* window) const
 {
-            qWarning() << __PRETTY_FUNCTION__;
     return new QFbWindow(window);
 }
 
@@ -127,7 +119,6 @@ QAbstractEventDispatcher *QVNCIntegration::createEventDispatcher() const
 
 QList<QPlatformScreen *> QVNCIntegration::screens() const
 {
-            qWarning() << __PRETTY_FUNCTION__;
     QList<QPlatformScreen *> list;
     list.append(m_primaryScreen);
     return list;
@@ -135,20 +126,11 @@ QList<QPlatformScreen *> QVNCIntegration::screens() const
 
 QPlatformFontDatabase *QVNCIntegration::fontDatabase() const
 {
-            qWarning() << __PRETTY_FUNCTION__;
     return m_fontDb.data();
 }
 
-/*
-QPlatformServices *QVNCIntegration::services() const
-{
-    return m_services.data();
-}
-*/
-
 QPlatformNativeInterface *QVNCIntegration::nativeInterface() const
 {
-            qWarning() << __PRETTY_FUNCTION__;
     return m_nativeInterface.data();
 }
 

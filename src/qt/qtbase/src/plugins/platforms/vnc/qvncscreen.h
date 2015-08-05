@@ -39,15 +39,18 @@
 **
 ****************************************************************************/
 
-#ifndef QVNCBACKINGSTORE_H
-#define QVNCBACKINGSTORE_H
+#ifndef QVNCSCREEN_H
+#define QVNCSCREEN_H
 
 #include <QtPlatformSupport/private/qfbscreen_p.h>
 
 QT_BEGIN_NAMESPACE
 
 class QPainter;
-class QFbCursor;
+
+class QVNCServer;
+class QVNCDirtyMap;
+class QVNCScreenPrivate;
 
 class QVNCScreen : public QFbScreen
 {
@@ -57,22 +60,19 @@ public:
     ~QVNCScreen();
 
     bool initialize();
+    QVNCDirtyMap *dirtyMap();
+    QVNCScreenPrivate *d_ptr;
+
+    int linestep() const { return mScreenImage ? mScreenImage->bytesPerLine() : 0; }
+    uchar *base() const { return mScreenImage ? mScreenImage->bits() : 0; }
+    QImage *image() const { return mScreenImage; }
 
 public slots:
     QRegion doRedraw();
 
 private:
+    QVNCServer *server;
     QStringList mArgs;
-
-    QImage mFbScreenImage;
-    int mBytesPerLine;
-
-    struct {
-        uchar *data;
-        int offset, size;
-    } mMmap;
-
-    QPainter *mBlitter;
 };
 
 QT_END_NAMESPACE

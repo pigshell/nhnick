@@ -71,6 +71,9 @@ public:
     virtual bool isOnScreen() const { return mOnScreen; }
     virtual QRect lastPainted() const { return mPrevRect; }
 
+protected:
+    QPlatformCursorImage *mGraphic;
+
 private:
     void setCursor(const uchar *data, const uchar *mask, int width, int height, int hotX, int hotY);
     void setCursor(Qt::CursorShape shape);
@@ -82,7 +85,6 @@ private:
     QRect mPrevRect;         // last place the cursor was drawn
     bool mDirty;
     bool mOnScreen;
-    QPlatformCursorImage *mGraphic;
 };
 
 QT_END_NAMESPACE
