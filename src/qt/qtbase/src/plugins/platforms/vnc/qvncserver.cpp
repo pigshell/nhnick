@@ -38,7 +38,7 @@
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
-#include "qvncscreen.h"
+#include "qvnccursor.h"
 #include "qvncserver.h"
 
 #include <QtCore/qtimer.h>
@@ -46,22 +46,16 @@
 #include <QtWidgets/qwidget.h>
 #include <QtGui/qpolygon.h>
 #include <QtGui/qpainter.h>
-
 #include <QtGui/qevent.h>
 #include <qpa/qwindowsysteminterface.h>
-
 #include <qplatformdefs.h>
-
 #include <qdebug.h>
 
 #include <stdlib.h>
 
-
 #define QT_QWS_VNC_DEBUG
 
-
 QT_BEGIN_NAMESPACE
-
 
 //copied from qscreen_qws.h
 #ifndef QT_QWS_DEPTH16_RGB
@@ -81,7 +75,6 @@ static const int qt_red_rounding_shift = qt_red_shift + qt_rbits;
 static const int qt_green_rounding_shift = qt_green_shift + qt_gbits;
 static const int qt_blue_rounding_shift = qt_bbits - qt_neg_blue_shift;
 
-
 inline QRgb qt_conv16ToRgb(ushort c)
 {
     const int r=(c & qt_red_mask);
@@ -93,8 +86,6 @@ inline QRgb qt_conv16ToRgb(ushort c)
 
     return qRgb(tr,tg,tb);
 }
-
-
 
 //===========================================================================
 
@@ -799,15 +790,13 @@ static bool buttonChange(Qt::MouseButtons before, Qt::MouseButtons after, Qt::Mo
 {
     if (before == after)
         return false;
-#if 0
-    for (int b = Qt::LeftButton;  b <= Qt::MidButton; b<<=1) {
+    for (unsigned int b = Qt::LeftButton;  b <= Qt::MidButton; b<<=1) {
         if ((before & b) != (after & b)) {
             *button = static_cast<Qt::MouseButton>(b);
             *isPress = (after & b);
             return true;
         }
     }
-#endif
     return false;
 }
 
@@ -1824,7 +1813,6 @@ QVNCScreenPrivate::~QVNCScreenPrivate()
 {
 }
 
-
 void QVNCScreenPrivate::setDirty(const QRect& rect, bool force)
 {
     if (rect.isEmpty())
@@ -1843,8 +1831,5 @@ void QVNCScreenPrivate::setDirty(const QRect& rect, bool force)
 
     vncServer->setDirty();
 }
-
-
-
 
 QT_END_NAMESPACE

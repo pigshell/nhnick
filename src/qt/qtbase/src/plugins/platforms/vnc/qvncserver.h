@@ -42,19 +42,16 @@
 #ifndef QSCREENVNC_P_H
 #define QSCREENVNC_P_H
 
-
-#include "qvnccursor.h"
-
 #include <QtCore/qvarlengtharray.h>
 #include <QtCore/qsharedmemory.h>
 #include <QtNetwork>
 
-#include "qvncintegration.h"
 #include "qvncscreen.h"
 
 QT_BEGIN_NAMESPACE
 
 class QVNCServer;
+class QVNCCursor;
 
 #define MAP_TILE_SIZE 16
 #define MAP_WIDTH 1280 / MAP_TILE_SIZE
