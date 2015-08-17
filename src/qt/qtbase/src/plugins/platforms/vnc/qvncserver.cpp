@@ -130,7 +130,7 @@ static const struct {
     { 0, 0 }
 };
 
-void QRfbRect::read(QTcpSocket *s)
+void QRfbRect::read(QVNCSocket *s)
 {
     quint16 buf[4];
     s->read((char*)buf, 8);
@@ -140,7 +140,7 @@ void QRfbRect::read(QTcpSocket *s)
     h = ntohs(buf[3]);
 }
 
-void QRfbRect::write(QTcpSocket *s) const
+void QRfbRect::write(QVNCSocket *s) const
 {
     quint16 buf[4];
     buf[0] = htons(x);
@@ -150,7 +150,7 @@ void QRfbRect::write(QTcpSocket *s) const
     s->write((char*)buf, 8);
 }
 
-void QRfbPixelFormat::read(QTcpSocket *s)
+void QRfbPixelFormat::read(QVNCSocket *s)
 {
     char buf[16];
     s->read(buf, 16);
@@ -176,7 +176,7 @@ void QRfbPixelFormat::read(QTcpSocket *s)
     blueShift = buf[12];
 }
 
-void QRfbPixelFormat::write(QTcpSocket *s)
+void QRfbPixelFormat::write(QVNCSocket *s)
 {
     char buf[16];
     buf[0] = bitsPerPixel;
@@ -210,7 +210,7 @@ void QRfbServerInit::setName(const char *n)
     strcpy(name, n);
 }
 
-void QRfbServerInit::read(QTcpSocket *s)
+void QRfbServerInit::read(QVNCSocket *s)
 {
     s->read((char *)&width, 2);
     width = ntohs(width);
@@ -227,7 +227,7 @@ void QRfbServerInit::read(QTcpSocket *s)
     name[len] = '\0';
 }
 
-void QRfbServerInit::write(QTcpSocket *s)
+void QRfbServerInit::write(QVNCSocket *s)
 {
     quint16 t = htons(width);
     s->write((char *)&t, 2);
@@ -240,7 +240,7 @@ void QRfbServerInit::write(QTcpSocket *s)
     s->write(name, strlen(name));
 }
 
-bool QRfbSetEncodings::read(QTcpSocket *s)
+bool QRfbSetEncodings::read(QVNCSocket *s)
 {
     if (s->bytesAvailable() < 3)
         return false;
@@ -253,7 +253,7 @@ bool QRfbSetEncodings::read(QTcpSocket *s)
     return true;
 }
 
-bool QRfbFrameBufferUpdateRequest::read(QTcpSocket *s)
+bool QRfbFrameBufferUpdateRequest::read(QVNCSocket *s)
 {
     if (s->bytesAvailable() < 9)
         return false;
@@ -264,7 +264,7 @@ bool QRfbFrameBufferUpdateRequest::read(QTcpSocket *s)
     return true;
 }
 
-bool QRfbKeyEvent::read(QTcpSocket *s)
+bool QRfbKeyEvent::read(QVNCSocket *s)
 {
     if (s->bytesAvailable() < 7)
         return false;
@@ -298,7 +298,7 @@ bool QRfbKeyEvent::read(QTcpSocket *s)
     return true;
 }
 
-bool QRfbPointerEvent::read(QTcpSocket *s)
+bool QRfbPointerEvent::read(QVNCSocket *s)
 {
     if (s->bytesAvailable() < 5)
         return false;
@@ -332,7 +332,7 @@ bool QRfbPointerEvent::read(QTcpSocket *s)
     return true;
 }
 
-bool QRfbClientCutText::read(QTcpSocket *s)
+bool QRfbClientCutText::read(QVNCSocket *s)
 {
     if (s->bytesAvailable() < 7)
         return false;
@@ -347,19 +347,13 @@ bool QRfbClientCutText::read(QTcpSocket *s)
 
 //===========================================================================
 
-QVNCServer::QVNCServer(QVNCScreen *screen)
-    : qvnc_screen(screen)
+QVNCServer::QVNCServer(QVNCScreen *screen, const QStringList &args)
+    : mArgs(args), qvnc_screen(screen), mode(QVNCSocket::Raw), ws_viewer(defaultViewer())
 {
-    init(5900);
+    init();
 }
 
-QVNCServer::QVNCServer(QVNCScreen *screen, int id)
-    : qvnc_screen(screen)
-{
-    init(5900 + id);
-}
-
-void QVNCServer::init(uint port)
+void QVNCServer::init()
 {
     handleMsg = false;
     client = 0;
@@ -368,17 +362,62 @@ void QVNCServer::init(uint port)
     keymod = 0;
     state = Unconnected;
     dirtyCursor = false;
+    int display = defaultDisplay();
+    QHostAddress *addr = defaultAddr();
+    QHostAddress *uaddr;
+
+    QRegularExpression addrRx(QLatin1String("addr=(\\S+)"));
+    QRegularExpression displayRx(QLatin1String("display=(\\d+)"));
+    QRegularExpression viewerRx(QLatin1String("viewer=(\\S+)"));
+    QRegularExpression modeRx(QLatin1String("mode=(\\S+)"));
+
+    foreach (const QString &arg, mArgs) {
+        QRegularExpressionMatch match;
+
+        if (arg.contains(addrRx, &match)) {
+            uaddr = new QHostAddress(match.captured(1));
+            if (uaddr->isNull()) {
+                qWarning() << "Invalid address, using" << addr->toString();
+            } else {
+                addr = uaddr;
+            }
+        } else if (arg.contains(displayRx, &match)) {
+            int udisplay;
+            udisplay = match.captured(1).toInt();
+            if (udisplay < 0 || udisplay > 100) { /* Paranoia */
+                qWarning() << "Invalid display, using" << display;
+            } else {
+                display = udisplay;
+            }
+        } else if (arg.contains(viewerRx, &match)) {
+            QUrl url(QUrl::fromPercentEncoding(match.captured(1).toUtf8()));
+            if (url.isValid()) {
+                ws_viewer = url;
+            } else {
+                qWarning() << "Invalid viewer URL, using" << ws_viewer;
+            }
+        } else if (arg.contains(modeRx, &match)) {
+            if (match.captured(1) == "raw") {
+                mode = QVNCSocket::Raw;
+            } else if (match.captured(1) == "websocket") {
+                mode = QVNCSocket::Web;
+            } else {
+                qWarning() << "Invalid mode, using" << "raw";
+            }
+        }
+    }
 
     refreshRate = 25;
+    int port = 5900 + display;
     timer = new QTimer(this);
     timer->setSingleShot(true);
     connect(timer, SIGNAL(timeout()), this, SLOT(checkUpdate()));
 
     serverSocket = new QTcpServer(this);
-    if (!serverSocket->listen(QHostAddress::Any, port))
+    if (!serverSocket->listen(*addr, port))
         qDebug() << "QVNCServer could not connect:" << serverSocket->errorString();
     else
-        qDebug("QVNCServer created on port %d", port);
+        qDebug() << "QVNCServer created on" << addr->toString() << "port" << port << "mode" << ((mode == QVNCSocket::Web) ? "websocket" : "raw");
 
     connect(serverSocket, SIGNAL(newConnection()), this, SLOT(acceptConnection()));
 
@@ -401,14 +440,28 @@ void QVNCServer::setDirty()
     }
 }
 
+
 void QVNCServer::acceptConnection()
 {
+    QTcpSocket *sock;
+
     if (client)
         delete client;
 
-    client = serverSocket->nextPendingConnection();
-    connect(client,SIGNAL(readyRead()),this,SLOT(readClient()));
-    connect(client,SIGNAL(disconnected()),this,SLOT(discardClient()));
+    sock = serverSocket->nextPendingConnection();
+    client = new QVNCSocket(sock, mode, ws_viewer);
+    connect(client, SIGNAL(readyRead()), this, SLOT(readClient()));
+    connect(client, SIGNAL(disconnected()), this, SLOT(discardClient()));
+    if (mode == QVNCSocket::Raw) {
+        startConnection();
+    } else {
+        connect(client, SIGNAL(setupComplete()), this,
+            SLOT(startConnection()));
+    }
+}
+
+void QVNCServer::startConnection()
+{
     handleMsg = false;
     encodingsPending = 0;
     cutTextPending = 0;
@@ -548,7 +601,7 @@ void QVNCServer::readClient()
                 }
                 sim.width = qvnc_screen->geometry().width();
                 sim.height = qvnc_screen->geometry().height();
-                sim.setName("Qt for Embedded Linux VNC Server");
+                sim.setName("Qt VNC Server");
                 sim.write(client);
                 state = Connected;
             }
@@ -700,39 +753,27 @@ void QVNCServer::setEncodings()
                 if (encoder)
                     break;
                 switch (qvnc_screen->depth()) {
-#ifdef QT_QWS_DEPTH_8
                 case 8:
                     encoder = new QRfbHextileEncoder<quint8>(this);
                     break;
-#endif
-#ifdef QT_QWS_DEPTH_12
-                case 12:
-                    encoder = new QRfbHextileEncoder<qrgb444>(this);
-                    break;
-#endif
-#ifdef QT_QWS_DEPTH_15
-                case 15:
-                    encoder = new QRfbHextileEncoder<qrgb555>(this);
-                    break;
-#endif
-#ifdef QT_QWS_DEPTH_16
                 case 16:
                     encoder = new QRfbHextileEncoder<quint16>(this);
                     break;
-#endif
-#ifdef QT_QWS_DEPTH_18
+                case 32:
+                    encoder = new QRfbHextileEncoder<quint32>(this);
+                    break;
+#if 0 /* Old QT types */
+                case 12:
+                    encoder = new QRfbHextileEncoder<qrgb444>(this);
+                    break;
+                case 15:
+                    encoder = new QRfbHextileEncoder<qrgb555>(this);
+                    break;
                 case 18:
                     encoder = new QRfbHextileEncoder<qrgb666>(this);
                     break;
-#endif
-#ifdef QT_QWS_DEPTH_24
                 case 24:
                     encoder = new QRfbHextileEncoder<qrgb888>(this);
-                    break;
-#endif
-#ifdef QT_QWS_DEPTH_32
-                case 32:
-                    encoder = new QRfbHextileEncoder<quint32>(this);
                     break;
 #endif
                 default:
@@ -813,8 +854,9 @@ void QVNCServer::pointerEvent()
             QEvent::Type type = QEvent::MouseMove;
             Qt::MouseButton button = Qt::NoButton;
             bool isPress;
-            if (buttonChange(buttons, ev.buttons, &button, &isPress))
+            if (buttonChange(buttons, ev.buttons, &button, &isPress)) {
                 type = isPress ? QEvent::MouseButtonPress : QEvent::MouseButtonRelease;
+            }
             QWindowSystemInterface::handleMouseEvent(0, eventPoint, eventPoint, ev.buttons);
         } else {
             // No buttons or motion reported at the same time as wheel events
@@ -935,7 +977,7 @@ bool QRfbSingleColorHextile<SRC>::read(const uchar *data,
 }
 
 template <class SRC>
-void QRfbSingleColorHextile<SRC>::write(QTcpSocket *socket) const
+void QRfbSingleColorHextile<SRC>::write(QVNCSocket *socket) const
 {
     if (true || encoder->newBg) {
         const int bpp = encoder->server->clientBytesPerPixel();
@@ -1050,7 +1092,7 @@ found_second_color:
 }
 
 template <class SRC>
-void QRfbDualColorHextile<SRC>::write(QTcpSocket *socket) const
+void QRfbDualColorHextile<SRC>::write(QVNCSocket *socket) const
 {
     const int bpp = encoder->server->clientBytesPerPixel();
     const int padding = 3;
@@ -1169,7 +1211,7 @@ bool QRfbMultiColorHextile<SRC>::read(const uchar *data,
 }
 
 template <class SRC>
-void QRfbMultiColorHextile<SRC>::write(QTcpSocket *socket) const
+void QRfbMultiColorHextile<SRC>::write(QVNCSocket *socket) const
 {
     const int padding = 3;
     QVarLengthArray<quint8> buffer(bpp + padding + sizeof(quint8) + sizeof(numRects));
@@ -1582,7 +1624,7 @@ void QRfbHextileEncoder<SRC>::write()
 //    QWSDisplay::grab(true);
 
     QVNCDirtyMap *map = server->dirtyMap();
-    QTcpSocket *socket = server->clientSocket();
+    QVNCSocket *socket = server->clientSocket();
 
     const quint32 encoding = htonl(5); // hextile encoding
     const int bytesPerPixel = server->clientBytesPerPixel();
@@ -1678,7 +1720,7 @@ void QRfbRawEncoder::write()
 //    QWSDisplay::grab(false);
 
     QVNCDirtyMap *map = server->dirtyMap();
-    QTcpSocket *socket = server->clientSocket();
+    QVNCSocket *socket = server->clientSocket();
 
     const int bytesPerPixel = server->clientBytesPerPixel();
     QSize screenSize = server->screen()->geometry().size();
@@ -1792,15 +1834,11 @@ void QVNCServer::discardClient()
 
 
 
-QVNCScreenPrivate::QVNCScreenPrivate(QVNCScreen *parent)
+QVNCScreenPrivate::QVNCScreenPrivate(QVNCScreen *parent, const QStringList &args)
     : dpiX(72), dpiY(72), doOnScreenSurface(false), refreshRate(25),
       vncServer(0), q_ptr(parent)
 {
-#if 0//ndef QT_NO_QWS_SIGNALHANDLER
-    QWSSignalHandler::instance()->addObject(this);
-#endif
-
-    vncServer = new QVNCServer(q_ptr, 0);
+    vncServer = new QVNCServer(q_ptr, args);
     vncServer->setRefreshRate(refreshRate);
 
 
@@ -1830,6 +1868,70 @@ void QVNCScreenPrivate::setDirty(const QRect& rect, bool force)
             dirty->setDirty(x, y, force);
 
     vncServer->setDirty();
+}
+
+QVNCSocket::QVNCSocket(QTcpSocket *s, QVNCSocket::SocketType mode, QUrl viewer)
+    : socket(s), mode(mode)
+{
+    if (mode == Raw) {
+        connect(socket, SIGNAL(readyRead()), this, SIGNAL(readyRead()));
+        connect(socket, SIGNAL(disconnected()), this, SIGNAL(disconnected()));
+    } else if (mode == Web) {
+        wsocket = new WebSocket(socket, viewer);
+        connect(wsocket, SIGNAL(readyRead()), this, SIGNAL(readyRead()));
+        connect(wsocket, SIGNAL(disconnected()), this, SIGNAL(disconnected()));
+        connect(wsocket, SIGNAL(setupComplete()), this, SIGNAL(setupComplete()));
+    }
+}
+
+QVNCSocket::~QVNCSocket()
+{
+    if (mode == Raw) {
+        delete socket;    
+    } else if (mode == Web) {
+        delete wsocket;
+    }
+}
+
+qint64 QVNCSocket::write(const char *buf, qint64 maxSize)
+{
+    if (mode == Raw) {
+        return socket->write(buf, maxSize);
+    } else {
+        return wsocket->write(buf, maxSize);
+    }
+}
+
+qint64 QVNCSocket::read(char *data, qint64 maxSize)
+{
+    if (mode == Raw) {
+        return socket->read(data, maxSize);
+    } else {
+        return wsocket->read(data, maxSize);
+    }
+}
+
+qint64 QVNCSocket::bytesAvailable() const
+{
+    if (mode == Raw) {
+        return socket->bytesAvailable();
+    } else {
+        return wsocket->bytesAvailable();
+    }
+}
+
+QAbstractSocket::SocketState QVNCSocket::state()
+{
+    return socket->state();
+}
+
+bool QVNCSocket::flush()
+{
+    if (mode == Raw) {
+        return socket->flush();
+    } else {
+        return wsocket->flush();
+    }
 }
 
 QT_END_NAMESPACE

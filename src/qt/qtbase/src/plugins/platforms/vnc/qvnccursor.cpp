@@ -90,7 +90,7 @@ QRect QVNCCursor::drawCursor(QPainter & painter)
 
 void QVNCCursor::clearClientCursor()
 {
-    QTcpSocket *socket = server->clientSocket();
+    QVNCSocket *socket = server->clientSocket();
     if (!socket) {
         return;
     }
@@ -117,7 +117,7 @@ void QVNCCursor::sendClientCursor()
     QImage *image = mGraphic->image();
     if (image->isNull())
         return;
-    QTcpSocket *socket = server->clientSocket();
+    QVNCSocket *socket = server->clientSocket();
     if (!socket) {
         return;
     }

@@ -46,9 +46,9 @@
 class QVNCIntegrationPlugin : public QPlatformIntegrationPlugin
 {
     Q_OBJECT
-    Q_PLUGIN_METADATA(IID "org.qt-project.Qt.QPA.QPlatformIntegrationFactoryInterface.5.2" FILE "vnc.json")
+    Q_PLUGIN_METADATA(IID QPlatformIntegrationFactoryInterface_iid FILE "vnc.json")
 public:
-    QVNCIntegration *create(const QString&, const QStringList&);
+    QVNCIntegration *create(const QString&, const QStringList&) Q_DECL_OVERRIDE;
 };
 
 QVNCIntegration *QVNCIntegrationPlugin::create(const QString& system, const QStringList& paramList)

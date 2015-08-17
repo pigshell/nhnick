@@ -53,6 +53,7 @@
 #include <QtPlatformSupport/private/qfbbackingstore_p.h>
 #include <QtPlatformSupport/private/qfbwindow_p.h>
 #include <QtPlatformSupport/private/qfbcursor_p.h>
+//#include <private/qinputdevicemanager_p_p.h>
 
 #include <QtGui/private/qguiapplication_p.h>
 #include <qpa/qplatforminputcontextfactory_p.h>
@@ -91,6 +92,7 @@ void QVNCIntegration::initialize()
 
     m_inputContext = QPlatformInputContextFactory::create();
     m_nativeInterface.reset(new QPlatformNativeInterface);
+    //QInputDeviceManagerPrivate::get(QGuiApplicationPrivate::inputDeviceManager())->setDeviceCount(QInputDeviceManager::DeviceTypePointer, 1);
 }
 
 bool QVNCIntegration::hasCapability(QPlatformIntegration::Capability cap) const

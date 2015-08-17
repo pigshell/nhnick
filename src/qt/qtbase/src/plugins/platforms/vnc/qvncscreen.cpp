@@ -43,14 +43,16 @@
 #include "qvncscreen.h"
 #include "qvnccursor.h"
 #include "qvncserver.h"
+#include "websocket.h"
 #include <QtCore/QRegularExpression>
 #include <QtGui/QPainter>
 #include <QDebug>
 
+#include <QtPlatformSupport/private/qfbwindow_p.h>
 QT_BEGIN_NAMESPACE
 
 QVNCScreen::QVNCScreen(const QStringList &args)
-    : mArgs(args)
+    : mArgs(args), maximize(defaultMaximize())
 {
 }
 
@@ -58,37 +60,43 @@ QVNCScreen::~QVNCScreen()
 {
 }
 
-static inline int defaultWidth() { return 1024; }
-static inline int defaultHeight() { return 768; }
-static inline int defaultDisplay() { return 0; }
-
-static void usage()
+void usage()
 {
     qWarning() << "VNC Platform Integration options:";
     qWarning() << "    size=<Width>x<Height> - set the display width and height";
     qWarning() << "         defaults to" << defaultWidth() << "x" << defaultHeight();
-    qWarning() << "    display=<ID> - set the VNC display port to ID + 5900";
+    qWarning() << "    display=<ID> - set the VNC display port to ID + 5900 (ID between 0-100)";
     qWarning() << "         defaults to" << defaultDisplay();
+    qWarning() << "    addr=<IP> - listen on the IPv4 address IP";
+    qWarning() << "         defaults to" << defaultAddr()->toString();
+    qWarning() << "    mode=<m> - raw or websocket mode";
+    qWarning() << "         defaults to raw";
+    qWarning() << "    maximize=<bool> - Maximize first window";
+    qWarning() << "         defaults to" << defaultMaximize();
+    qWarning() << "    viewer=<URL> - HTML5 VNC viewer URL";
+    qWarning() << "         defaults to" << defaultViewer();
 }
 
 bool QVNCScreen::initialize()
 {
     QRegularExpression sizeRx(QLatin1String("size=(\\d+)x(\\d+)"));
-    QRegularExpression displayRx(QLatin1String("display=(\\d+)"));
+    QRegularExpression maximizeRx(QLatin1String("maximize=(\\S+)"));
     QRect userGeometry;
     bool showUsage = false;
-    int display = defaultDisplay();
 
     foreach (const QString &arg, mArgs) {
         QRegularExpressionMatch match;
         if (arg.contains(sizeRx, &match)) {
             userGeometry.setSize(QSize(match.captured(1).toInt(), match.captured(2).toInt()));
             userGeometry.setTopLeft(QPoint(0, 0));
-        } else if (arg.contains(displayRx, &match)) {
-            display = match.captured(1).toInt();
-        } else {
-            qWarning() << "Unknown VNC options:" << arg;
-            showUsage = true;
+        } else if (arg.contains(maximizeRx, &match)) {
+            if (match.captured(1) == "false") {
+                maximize = false;
+            } else if (match.captured(1) == "true") {
+                maximize = true;
+            } else {
+                showUsage = true;
+            }
         }
     }
 
@@ -107,7 +115,7 @@ bool QVNCScreen::initialize()
     mPhysicalSize = userGeometry.size() * 254 / 720;
 
     QFbScreen::initializeCompositor();
-    d_ptr = new QVNCScreenPrivate(this);
+    d_ptr = new QVNCScreenPrivate(this, mArgs);
     QVNCCursor *c = new QVNCCursor(d_ptr->vncServer, this);
     mCursor = c;
     d_ptr->vncServer->setCursor(c);
@@ -115,6 +123,17 @@ bool QVNCScreen::initialize()
     return true;
 }
 
+void QVNCScreen::addWindow(QFbWindow *window)
+{
+    static bool firstwindow = true;
+
+    QFbScreen::addWindow(window);
+    if (firstwindow && maximize) {
+        firstwindow = false;
+        window->setWindowState(Qt::WindowMaximized);
+        window->setVisible(true);
+    }
+}
 
 QRegion QVNCScreen::doRedraw()
 {

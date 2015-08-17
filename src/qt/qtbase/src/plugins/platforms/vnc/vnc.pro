@@ -12,10 +12,12 @@ SOURCES =   main.cpp \
             qvncintegration.cpp \
             qvncscreen.cpp \
             qvncserver.cpp \
-            qvnccursor.cpp
+            qvnccursor.cpp \
+            websocket.cpp
 HEADERS =   qvncintegration.h \
             qvncscreen.h \
             qvncserver.h \
-            qvnccursor.h
+            qvnccursor.h \
+            websocket.h
 
 OTHER_FILES += vnc.json

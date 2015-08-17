@@ -59,6 +59,8 @@ public:
     QVNCScreen(const QStringList &args);
     ~QVNCScreen();
 
+    void addWindow(QFbWindow *window);
+
     bool initialize();
     QVNCDirtyMap *dirtyMap();
     QVNCScreenPrivate *d_ptr;
@@ -73,6 +75,7 @@ public slots:
 private:
     QVNCServer *server;
     QStringList mArgs;
+    bool maximize;
 };
 
 QT_END_NAMESPACE
