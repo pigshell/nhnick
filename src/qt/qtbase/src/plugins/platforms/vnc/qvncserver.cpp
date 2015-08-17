@@ -455,6 +455,7 @@ void QVNCServer::acceptConnection()
     if (mode == QVNCSocket::Raw) {
         startConnection();
     } else {
+        qDebug() << __PRETTY_FUNCTION__ << "WEB";
         connect(client, SIGNAL(setupComplete()), this,
             SLOT(startConnection()));
     }
@@ -1877,7 +1878,7 @@ QVNCSocket::QVNCSocket(QTcpSocket *s, QVNCSocket::SocketType mode, QUrl viewer)
         connect(socket, SIGNAL(readyRead()), this, SIGNAL(readyRead()));
         connect(socket, SIGNAL(disconnected()), this, SIGNAL(disconnected()));
     } else if (mode == Web) {
-        wsocket = new WebSocket(socket, viewer);
+        wsocket = new WebSocket(socket, viewer, 200);
         connect(wsocket, SIGNAL(readyRead()), this, SIGNAL(readyRead()));
         connect(wsocket, SIGNAL(disconnected()), this, SIGNAL(disconnected()));
         connect(wsocket, SIGNAL(setupComplete()), this, SIGNAL(setupComplete()));
