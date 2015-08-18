@@ -50,6 +50,7 @@ static const struct QCommandLineConfigEntry flags[] = {
     { QCommandLine::Option, '\0', "cookies-file", "Sets the file name to store the persistent cookies", QCommandLine::Optional },
     { QCommandLine::Option, '\0', "config", "Specifies JSON-formatted configuration file", QCommandLine::Optional },
     { QCommandLine::Option, '\0', "debug", "Prints additional warning and debug message: 'true' or 'false' (default)", QCommandLine::Optional },
+    { QCommandLine::Option, '\0', "show-page", "Renders web page to framebuffer by default: 'true' or 'false' (default)", QCommandLine::Optional },
     { QCommandLine::Option, '\0', "disk-cache", "Enables disk cache: 'true' or 'false' (default)", QCommandLine::Optional },
     { QCommandLine::Option, '\0', "ignore-ssl-errors", "Ignores SSL errors (expired/self-signed certificate errors): 'true' or 'false' (default)", QCommandLine::Optional },
     { QCommandLine::Option, '\0', "load-images", "Loads all inlined images: 'true' (default) or 'false'", QCommandLine::Optional },
@@ -434,6 +435,16 @@ void Config::setDebug(const bool value)
     m_debug = value;
 }
 
+bool Config::showPage() const
+{
+    return m_showPage;
+}
+
+void Config::setShowPage(const bool value)
+{
+    m_showPage = value;
+}
+
 int Config::remoteDebugPort() const
 {
     return m_remoteDebugPort;
@@ -564,6 +575,7 @@ void Config::resetToDefaults()
     m_unknownOption.clear();
     m_versionFlag = false;
     m_debug = false;
+    m_showPage = false;
     m_remoteDebugPort = -1;
     m_remoteDebugAutorun = false;
     m_webSecurityEnabled = true;
@@ -658,6 +670,7 @@ void Config::handleOption(const QString& option, const QVariant& value)
 
     QStringList booleanFlags;
     booleanFlags << "debug";
+    booleanFlags << "show-page";
     booleanFlags << "disk-cache";
     booleanFlags << "ignore-ssl-errors";
     booleanFlags << "load-images";
@@ -683,6 +696,10 @@ void Config::handleOption(const QString& option, const QVariant& value)
 
     if (option == "debug") {
         setPrintDebugMessages(boolValue);
+    }
+
+    if (option == "show-page") {
+        setShowPage(boolValue);
     }
 
     if (option == "disk-cache") {

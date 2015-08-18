@@ -144,6 +144,9 @@ public:
     void setDebug(const bool value);
     bool debug() const;
 
+    void setShowPage(const bool value);
+    bool showPage() const;
+
     void setRemoteDebugPort(const int port);
     int remoteDebugPort() const;
 
@@ -234,6 +237,7 @@ private:
     QString m_authUser;
     QString m_authPass;
     bool m_debug;
+    bool m_showPage;
     int m_remoteDebugPort;
     bool m_remoteDebugAutorun;
     bool m_webSecurityEnabled;
