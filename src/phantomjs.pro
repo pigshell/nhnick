@@ -36,7 +36,8 @@ HEADERS += \
     config.h \
     childprocess.h \
     repl.h \
-    crashdump.h
+    crashdump.h \
+    webview.h
 
 SOURCES += phantom.cpp \
     callback.cpp \
@@ -56,7 +57,8 @@ SOURCES += phantom.cpp \
     config.cpp \
     childprocess.cpp \
     repl.cpp \
-    crashdump.cpp
+    crashdump.cpp \
+    webview.cpp
 
 OTHER_FILES += \
     bootstrap.js \

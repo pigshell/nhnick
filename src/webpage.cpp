@@ -1688,4 +1688,9 @@ void WebPage::clearMemoryCache()
     QWebSettings::clearMemoryCaches();
 }
 
+void WebPage::show()
+{
+    Phantom::instance()->showPage(this);
+}
+
 #include "webpage.moc"

@@ -32,6 +32,8 @@
 #define PHANTOM_H
 
 #include <QPointer>
+#include <QtWidgets>
+#include <QWebpage>
 
 #include "filesystem.h"
 #include "encoding.h"
@@ -43,6 +45,17 @@
 class WebPage;
 class CustomPage;
 class WebServer;
+class WebView;
+
+class MainWindow: public QMainWindow
+{
+    Q_OBJECT
+
+public:
+    MainWindow();
+    ~MainWindow();
+    WebView* view;
+};
 
 class Phantom : public QObject
 {
@@ -100,6 +113,9 @@ public:
      * Create `child_process` module instance
      */
     Q_INVOKABLE QObject* _createChildProcess();
+
+    void showPage(WebPage* page);
+    void hidePage(WebPage* page);
 
 public slots:
     QObject* createCookieJar(const QString& filePath);
@@ -198,6 +214,8 @@ private:
     QList<QPointer<WebServer> > m_servers;
     Config m_config;
     CookieJar* m_defaultCookieJar;
+
+    MainWindow* m_window;
 
     friend class CustomPage;
 };

@@ -50,6 +50,7 @@
 #include "callback.h"
 #include "cookiejar.h"
 #include "childprocess.h"
+#include "webview.h"
 
 static Phantom* phantomInstance = NULL;
 
@@ -110,6 +111,8 @@ void Phantom::init()
         QWebSettings::setOfflineStorageDefaultQuota(m_config.offlineStorageDefaultQuota());
     }
 
+    m_window = new MainWindow();
+
     m_page = new WebPage(this, QUrl::fromLocalFile(m_config.scriptFile()));
     m_page->setCookieJar(m_defaultCookieJar);
     m_pages.append(m_page);
@@ -142,6 +145,7 @@ void Phantom::init()
     m_page->applySettings(m_defaultPageSettings);
 
     setLibraryPath(QFileInfo(m_config.scriptFile()).dir().absolutePath());
+    m_window->showMaximized();
 }
 
 // public:
@@ -504,4 +508,45 @@ void Phantom::doExit(int code)
     m_pages.clear();
     m_page = 0;
     QApplication::instance()->exit(code);
+}
+
+void Phantom::showPage(WebPage* page)
+{
+    QVariantMap psize;
+    QSize size = m_window->view->size();
+    psize["width"] = size.width();
+    psize["height"] = size.height();
+    page->setViewportSize(psize);
+    m_window->view->page = page;
+    m_window->view->wpage = reinterpret_cast<QWebPage *>(page->m_customWebPage);
+    connect(page, SIGNAL(repaintRequested(const int, const int, const int, const int)), m_window->view, SLOT(render(const int, const int, const int, const int)));
+    connect(page, SIGNAL(scrollRequested(int, int, const QRect&)), m_window->view, SLOT(scroll(int, int, const QRect&)));
+}
+
+void Phantom::hidePage(WebPage* page)
+{
+    if (m_window->view->page == page) {
+        m_window->view->page = 0;
+        m_window->view->wpage = 0;
+        disconnect(0, 0, m_window->view, SLOT(render(const int, const int, const int, const int)));
+    }
+}
+
+MainWindow::MainWindow()
+    :QMainWindow()
+{
+    view = new WebView(this);
+    QToolBar* toolBar = addToolBar(tr("Navigation"));
+    /*
+    toolBar->addAction(view->pageAction(QWebPage::Back));
+    toolBar->addAction(view->pageAction(QWebPage::Forward));
+    toolBar->addAction(view->pageAction(QWebPage::Reload));
+    toolBar->addAction(view->pageAction(QWebPage::Stop));
+    */
+    setCentralWidget(view);
+}
+
+MainWindow::~MainWindow()
+{
+    delete view;
 }

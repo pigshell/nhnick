@@ -501,6 +501,8 @@ public slots:
 
     void clearMemoryCache();
 
+    void show();
+
 signals:
     void initialized();
     void loadStarted();
