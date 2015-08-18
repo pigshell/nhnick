@@ -46,16 +46,7 @@ class WebPage;
 class CustomPage;
 class WebServer;
 class WebView;
-
-class MainWindow: public QMainWindow
-{
-    Q_OBJECT
-
-public:
-    MainWindow();
-    ~MainWindow();
-    WebView* view;
-};
+class MainWindow;
 
 class Phantom : public QObject
 {

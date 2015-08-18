@@ -51,6 +51,7 @@
 #include "cookiejar.h"
 #include "childprocess.h"
 #include "webview.h"
+#include "mainwindow.h"
 
 static Phantom* phantomInstance = NULL;
 
@@ -514,41 +515,16 @@ void Phantom::doExit(int code)
 
 void Phantom::showPage(WebPage* page)
 {
-    QWebPage *wpage = reinterpret_cast<QWebPage* >(page->m_customWebPage);
-    wpage->setViewportSize(m_window->view->size());
-    m_window->view->setPage(page, wpage);
-    page->mainFrame()->setScrollBarPolicy(Qt::Horizontal, Qt::ScrollBarAsNeeded);
-    page->mainFrame()->setScrollBarPolicy(Qt::Vertical, Qt::ScrollBarAsNeeded);
-    connect(page, SIGNAL(repaintRequested(const int, const int, const int, const int)), m_window->view, SLOT(handleRepaintRequested(const int, const int, const int, const int)));
-    connect(wpage, SIGNAL(scrollRequested(int, int, const QRect&)), m_window->view, SLOT(handleScrollRequested(int, int, const QRect&)));
+    QWebPage* wpage = reinterpret_cast<QWebPage* >(page->m_customWebPage);
+    WebView* view = m_window->view();
+    view->setPage(page, wpage);
 }
 
 void Phantom::hidePage(WebPage* page)
 {
-    WebPage* wp = m_window->view->page();
+    WebView* view = m_window->view();
+    WebPage* wp = view->page();
     if (wp == page) {
-        m_window->view->setPage(0, 0);
-        page->mainFrame()->setScrollBarPolicy(Qt::Horizontal, Qt::ScrollBarAlwaysOff);
-        page->mainFrame()->setScrollBarPolicy(Qt::Vertical, Qt::ScrollBarAlwaysOff);
-        disconnect(0, 0, m_window->view, 0);
+        view->setPage(0, 0);
     }
-}
-
-MainWindow::MainWindow()
-    :QMainWindow()
-{
-    view = new WebView(this);
-    QToolBar* toolBar = addToolBar(tr("Navigation"));
-    /*
-    toolBar->addAction(view->pageAction(QWebPage::Back));
-    toolBar->addAction(view->pageAction(QWebPage::Forward));
-    toolBar->addAction(view->pageAction(QWebPage::Reload));
-    toolBar->addAction(view->pageAction(QWebPage::Stop));
-    */
-    setCentralWidget(view);
-}
-
-MainWindow::~MainWindow()
-{
-    delete view;
 }

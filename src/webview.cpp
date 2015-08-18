@@ -15,6 +15,7 @@ WebView::WebView(QWidget* parent)
 
 WebView::~WebView()
 {
+    setPage(0, 0);
 }
 
 WebPage* WebView::page()
@@ -24,9 +25,25 @@ WebPage* WebView::page()
 
 void WebView::setPage(WebPage* wp, QWebPage* qwp, bool ro)
 {
+    if (m_webpage) {
+        m_webpage->mainFrame()->setScrollBarPolicy(Qt::Horizontal, Qt::ScrollBarAlwaysOff);
+        m_webpage->mainFrame()->setScrollBarPolicy(Qt::Vertical, Qt::ScrollBarAlwaysOff);
+        disconnect(0, 0, this, 0);
+    }
+
     m_webpage = wp;
     m_qwebpage = qwp;
     readonly = ro;
+
+    if (!m_webpage) {
+        return;
+    }
+
+    m_qwebpage->setViewportSize(size());
+    m_webpage->mainFrame()->setScrollBarPolicy(Qt::Horizontal, Qt::ScrollBarAsNeeded);
+    m_webpage->mainFrame()->setScrollBarPolicy(Qt::Vertical, Qt::ScrollBarAsNeeded);
+    connect(m_webpage, SIGNAL(repaintRequested(const int, const int, const int, const int)), this, SLOT(handleRepaintRequested(const int, const int, const int, const int)));
+    connect(m_qwebpage, SIGNAL(scrollRequested(int, int, const QRect&)), this, SLOT(handleScrollRequested(int, int, const QRect&)));
 }
 
 void WebView::paintEvent(QPaintEvent *ev)
