@@ -502,6 +502,7 @@ public slots:
     void clearMemoryCache();
 
     void show();
+    void hide();
 
 signals:
     void initialized();

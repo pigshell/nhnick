@@ -934,6 +934,7 @@ void WebPage::release()
 
 void WebPage::close()
 {
+    hide();
     deleteLater();
 }
 
@@ -1691,6 +1692,11 @@ void WebPage::clearMemoryCache()
 void WebPage::show()
 {
     Phantom::instance()->showPage(this);
+}
+
+void WebPage::hide()
+{
+    Phantom::instance()->hidePage(this);
 }
 
 #include "webpage.moc"

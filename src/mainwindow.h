@@ -15,8 +15,20 @@ public:
     ~MainWindow();
     WebView* view();
 
+public slots:
+    void urlChanged(const QUrl& url);
+
+private slots:
+    void urlEntered();
+
 private:
     WebView* m_view;
+    QLineEdit* location;
+
+    QAction* backAct;
+    QAction* forwardAct;
+    QAction* reloadAct;
+    QAction* stopAct;
 };
 
 #endif

@@ -1,4 +1,5 @@
 #include "webview.h"
+#include "phantom.h"
 
 #include <QWebFrame>
 #include <QWebPage>
@@ -44,6 +45,7 @@ void WebView::setPage(WebPage* wp, QWebPage* qwp, bool ro)
     m_webpage->mainFrame()->setScrollBarPolicy(Qt::Vertical, Qt::ScrollBarAsNeeded);
     connect(m_webpage, SIGNAL(repaintRequested(const int, const int, const int, const int)), this, SLOT(handleRepaintRequested(const int, const int, const int, const int)));
     connect(m_qwebpage, SIGNAL(scrollRequested(int, int, const QRect&)), this, SLOT(handleScrollRequested(int, int, const QRect&)));
+    connect(m_webpage, SIGNAL(urlChanged(const QUrl&)), this, SLOT(handleUrlChanged(const QUrl&)));
 }
 
 void WebView::paintEvent(QPaintEvent *ev)
@@ -115,16 +117,41 @@ void WebView::wheelEvent(QWheelEvent* ev)
 
 void WebView::stop()
 {
+    if (m_webpage) {
+        m_webpage->stop();
+    }
 }
 
 void WebView::back()
 {
+    if (m_webpage) {
+        m_webpage->goBack();
+    }
 }
 
 void WebView::forward()
 {
+    if (m_webpage) {
+        m_webpage->goForward();
+    }
 }
 
 void WebView::reload()
 {
+    if (m_webpage) {
+        m_webpage->reload();
+    }
+}
+
+void WebView::handleUrlChanged(const QUrl& url)
+{
+    emit urlChanged(url);
+}
+
+void WebView::handleUrlEntered(const QString& url)
+{
+    if (m_webpage) {
+        QVariant op("get");
+        m_webpage->openUrl(url, op, Phantom::instance()->defaultPageSettings());
+    }
 }
