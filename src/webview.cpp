@@ -29,7 +29,8 @@ void WebView::setPage(WebPage* wp, QWebPage* qwp, bool ro)
     if (m_webpage) {
         m_webpage->mainFrame()->setScrollBarPolicy(Qt::Horizontal, Qt::ScrollBarAlwaysOff);
         m_webpage->mainFrame()->setScrollBarPolicy(Qt::Vertical, Qt::ScrollBarAlwaysOff);
-        disconnect(0, 0, this, 0);
+        disconnect(m_webpage, 0, this, 0);
+        disconnect(m_qwebpage, 0, this, 0);
     }
 
     m_webpage = wp;
@@ -112,6 +113,26 @@ void WebView::wheelEvent(QWheelEvent* ev)
         const bool accepted = ev->isAccepted();
         m_qwebpage->event(ev);
         ev->setAccepted(accepted);
+    }
+}
+
+void WebView::keyPressEvent(QKeyEvent* ev)
+{
+    if (m_webpage) {
+        m_qwebpage->event(ev);
+    }
+    if (!ev->isAccepted()) {
+        QWidget::keyPressEvent(ev);
+    }
+}
+
+void WebView::keyReleaseEvent(QKeyEvent* ev)
+{
+    if (m_webpage) {
+        m_qwebpage->event(ev);
+    }
+    if (!ev->isAccepted()) {
+        QWidget::keyReleaseEvent(ev);
     }
 }
 
