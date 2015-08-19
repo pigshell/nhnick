@@ -348,7 +348,7 @@ bool QRfbClientCutText::read(QVNCSocket *s)
 //===========================================================================
 
 QVNCServer::QVNCServer(QVNCScreen *screen, const QStringList &args)
-    : mArgs(args), qvnc_screen(screen), mode(QVNCSocket::Raw), ws_viewer(defaultViewer())
+    : mArgs(args), qvnc_screen(screen), mode(QVNCSocket::Web), ws_viewer(defaultViewer())
 {
     init();
 }
@@ -402,7 +402,7 @@ void QVNCServer::init()
             } else if (match.captured(1) == "websocket") {
                 mode = QVNCSocket::Web;
             } else {
-                qWarning() << "Invalid mode, using" << "raw";
+                qWarning() << "Invalid mode, using" << "web";
             }
         }
     }
