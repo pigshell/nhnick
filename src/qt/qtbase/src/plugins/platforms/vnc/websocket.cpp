@@ -3,12 +3,13 @@
 #include <QtCore/QRegularExpression>
 #include <QCryptographicHash>
 #include <stdint.h>
+#include <arpa/inet.h>
 
 #define htonll(x) ((1==htonl(1)) ? (x) : ((uint64_t)htonl((x) & 0xFFFFFFFF) << 32) | htonl((x) >> 32))
 #define ntohll(x) ((1==ntohl(1)) ? (x) : ((uint64_t)ntohl((x) & 0xFFFFFFFF) << 32) | ntohl((x) >> 32))
 
-WebSocket::WebSocket(QTcpSocket *sock, QUrl vurl, int buftime)
-:   socket(sock), state(Request), viewer(vurl), buftime(buftime)
+WebSocket::WebSocket(QObject *p, QTcpSocket *sock, QUrl vurl, int buftime)
+:   QObject::QObject(p), socket(sock), state(Request), viewer(vurl), buftime(buftime), timer(0)
 {
     QUrl ourl;
 
@@ -33,7 +34,7 @@ WebSocket::WebSocket(QTcpSocket *sock, QUrl vurl, int buftime)
          * of frames. Sending a large number of very small frames impacts
          * browser performance.
          */
-        QTimer *timer = new QTimer(this);
+        timer = new QTimer(this);
         connect(timer, SIGNAL(timeout()), this, SLOT(flushOutbuf()));
         timer->start(buftime);
     } else if (buftime < 0) {
@@ -47,11 +48,8 @@ WebSocket::~WebSocket()
 
 void WebSocket::readClient()
 {
-    while (socket->bytesAvailable()) {
+    while (state != Unconnected && socket->bytesAvailable()) {
         switch (state) {
-            case Unconnected:
-                return;
-
             case Request:
                 if (!socket->canReadLine()) {
                     return;
@@ -208,6 +206,9 @@ void WebSocket::sendClose()
 
 qint64 WebSocket::sendFrame(QByteArray buf)
 {
+    if (state == Unconnected) {
+        qDebug() << "GDB:" << "sending frame while unconnected?";
+    }
     QByteArray msg;
     qint64 datalen = buf.size();
     unsigned char b0 = 0x80 | OpBinaryFrame;
@@ -239,7 +240,7 @@ WebSocket::WState WebSocket::sendHandshake()
         sendHeader("Connection", "close");
         sendHeader("Location", viewer.toString());
         endHeaders();
-        socket->close();
+        socket->disconnectFromHost();
         return Unconnected;
     }
 
@@ -304,7 +305,7 @@ void WebSocket::sendError(int code, QString message)
     sendResponse(code, message);
     sendHeader("Connection", "close");
     endHeaders();
-    socket->close();
+    socket->disconnectFromHost();
 }
 
 void WebSocket::abort(QString message)
@@ -312,13 +313,14 @@ void WebSocket::abort(QString message)
     qDebug() << __PRETTY_FUNCTION__ << message;
     socket->abort();
     state = Unconnected;
-    emit disconnected();
 }
 
 void WebSocket::discardClient()
 {
-    qDebug() << "discarding client";
     state = Unconnected;
+    if (timer) {
+        timer->stop();
+    }
     emit disconnected();
 }
 
@@ -359,4 +361,10 @@ bool WebSocket::flush()
 {
     flushOutbuf();
     return socket->flush();
+}
+
+void WebSocket::close()
+{
+    socket->disconnectFromHost();
+    state = Unconnected;
 }

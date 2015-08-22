@@ -378,7 +378,7 @@ public:
         Web,
         SecureWeb
     };
-    QVNCSocket(QTcpSocket *s, SocketType mode, QUrl viewer);
+    QVNCSocket(QObject *parent, QTcpSocket *s, SocketType mode, QUrl viewer);
     ~QVNCSocket();
 
     /* Socket-like interfaces */
@@ -387,11 +387,16 @@ public:
     qint64 bytesAvailable() const;
     QAbstractSocket::SocketState state();
     bool flush();
+    void close();
 
 Q_SIGNALS:
     void setupComplete();
     void readyRead();
     void disconnected();
+
+private slots:
+    void handleDisconnect();
+    void handleDestroyed();
 
 private:
     QTcpSocket *socket;
@@ -402,6 +407,7 @@ private:
 class QVNCServer : public QObject
 {
     Q_OBJECT
+
 public:
     QVNCServer(QVNCScreen *screen, const QStringList &args);
     ~QVNCServer();
@@ -434,6 +440,7 @@ public:
     QImage *screenImage() const;
     inline bool doPixelConversion() const { return needConversion; }
     void setCursor(QVNCCursor * c) { cursor = c; }
+
 private:
     void setPixelFormat();
     void setEncodings();

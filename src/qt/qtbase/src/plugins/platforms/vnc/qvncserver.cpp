@@ -445,17 +445,18 @@ void QVNCServer::acceptConnection()
 {
     QTcpSocket *sock;
 
-    if (client)
-        delete client;
+    if (client) {
+        client->close();
+        discardClient();
+    }
 
     sock = serverSocket->nextPendingConnection();
-    client = new QVNCSocket(sock, mode, ws_viewer);
+    client = new QVNCSocket(this, sock, mode, ws_viewer);
     connect(client, SIGNAL(readyRead()), this, SLOT(readClient()));
     connect(client, SIGNAL(disconnected()), this, SLOT(discardClient()));
     if (mode == QVNCSocket::Raw) {
         startConnection();
     } else {
-        qDebug() << __PRETTY_FUNCTION__ << "WEB";
         connect(client, SIGNAL(setupComplete()), this,
             SLOT(startConnection()));
     }
@@ -1831,6 +1832,10 @@ void QVNCServer::discardClient()
     state = Unconnected;
     delete encoder;
     encoder = 0;
+    if (client) {
+        disconnect(client, 0, this, 0);
+        client = 0;
+    }
 }
 
 
@@ -1871,26 +1876,42 @@ void QVNCScreenPrivate::setDirty(const QRect& rect, bool force)
     vncServer->setDirty();
 }
 
-QVNCSocket::QVNCSocket(QTcpSocket *s, QVNCSocket::SocketType mode, QUrl viewer)
-    : socket(s), mode(mode)
+QVNCSocket::QVNCSocket(QObject *p, QTcpSocket *s, QVNCSocket::SocketType mode, QUrl viewer)
+    : QObject::QObject(p), socket(s), mode(mode)
 {
+    connect(socket, SIGNAL(destroyed()), this, SLOT(handleDestroyed()));
     if (mode == Raw) {
         connect(socket, SIGNAL(readyRead()), this, SIGNAL(readyRead()));
-        connect(socket, SIGNAL(disconnected()), this, SIGNAL(disconnected()));
+        connect(socket, SIGNAL(disconnected()), this, SLOT(handleDisconnect()));
     } else if (mode == Web) {
-        wsocket = new WebSocket(socket, viewer, 200);
+        wsocket = new WebSocket(this, socket, viewer, 200);
         connect(wsocket, SIGNAL(readyRead()), this, SIGNAL(readyRead()));
-        connect(wsocket, SIGNAL(disconnected()), this, SIGNAL(disconnected()));
+        connect(wsocket, SIGNAL(disconnected()), this, SLOT(handleDisconnect()));
         connect(wsocket, SIGNAL(setupComplete()), this, SIGNAL(setupComplete()));
     }
 }
 
 QVNCSocket::~QVNCSocket()
 {
+}
+
+void QVNCSocket::handleDisconnect()
+{
+    emit disconnected();
+    socket->deleteLater();
+}
+
+void QVNCSocket::handleDestroyed()
+{
+    deleteLater();
+}
+
+void QVNCSocket::close()
+{
     if (mode == Raw) {
-        delete socket;    
-    } else if (mode == Web) {
-        delete wsocket;
+        socket->close();
+    } else {
+        wsocket->close();
     }
 }
 

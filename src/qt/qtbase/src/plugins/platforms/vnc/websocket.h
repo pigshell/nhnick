@@ -9,7 +9,7 @@ class WebSocket: public QObject
     Q_OBJECT
 
 public:
-    WebSocket(QTcpSocket *sock, QUrl viewer, int buftime);
+    WebSocket(QObject *p, QTcpSocket *sock, QUrl viewer, int buftime);
     ~WebSocket();
 
     /* Socket-like interfaces */
@@ -17,6 +17,7 @@ public:
     qint64 read(char *data, qint64 maxSize);
     qint64 bytesAvailable() const;
     bool flush();
+    void close();
 
 Q_SIGNALS:
     void setupComplete();
@@ -43,6 +44,7 @@ private:
     QString origin;
     qint64 wantbytes;
     int buftime;
+    QTimer *timer;
 
     enum {
         OpContinuation = 0x0,
