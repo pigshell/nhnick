@@ -55,18 +55,18 @@ private:
         OpPong
     };
 
-    void sendResponse(int code, QString response);
-    void sendHeader(QString header, QString value);
-    void sendError(int code, QString message);
-    qint64 sendFrame(QByteArray buf);
+    void sendResponse(int code, const QString& response);
+    void sendHeader(const QString& header, const QString& value);
+    void sendError(int code, const QString& message);
+    qint64 sendFrame(const QByteArray& buf);
     void endHeaders();
     WState processHeader();
     WState sendHandshake();
     WState decodeFrame();
     void encodeFrame();
-    void abort(QString message);
-    void sendPong();
-    void sendClose();
+    void abort(const QString& message);
+    void sendPong(const QByteArray& framedata);
+    void sendClose(const QByteArray& framedata, quint16 code = 1000);
 
 };
 
