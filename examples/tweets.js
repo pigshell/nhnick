@@ -27,11 +27,11 @@ page.open(encodeURI("http://mobile.twitter.com/" + twitterId), function (status)
     } else {
         // Execute some DOM inspection within the page context
         page.evaluate(function() {
-            var list = document.querySelectorAll('div.tweet-text');
+            var list = document.querySelectorAll('div.Tweet-text');
             for (var i = 0; i < list.length; ++i) {
                 console.log((i + 1) + ": " + list[i].innerText);
             }
         });
     }
-    phantom.exit();
+//    phantom.exit();
 });

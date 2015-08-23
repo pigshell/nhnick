@@ -1,46 +1,90 @@
-# [PhantomJS](http://phantomjs.org) - Scriptable Headless WebKit
+# Nearly Headless Nick - Scriptable Headless WebKit + VNC
 
-PhantomJS ([www.phantomjs.org](http://phantomjs.org)) is a headless WebKit scriptable with JavaScript. It is used by hundreds of [developers](http://phantomjs.org/buzz.html) and dozens of [organizations](http://phantomjs.org/users.html) for web-related development workflow.
+**Nearly Headless Nick** is a fork of PhantomJS, the scriptable headless WebKit
+browser, which sports a VNC head. You can use it like PhantomJS, and view
+with a live rendering of the current page using an HTML5 VNC client.
 
-The latest [stable release](http://phantomjs.org/release-2.0.html) is version 2.0.
+This is useful while writing and debugging tests with phantomjs, or observing
+the progress of automated testing.
 
-**Note**: Please **do not** create a GitHub pull request **without** reading the [Contribution Guide](https://github.com/ariya/phantomjs/blob/master/CONTRIBUTING.md) first. Failure to do so may result in the rejection of the pull request.
+It is based on the [QtVNC](https://github.com/pigshell/qtbase) fork which
+adds VNC support to Qt 5 as a platform plugin.
 
-## Use Cases
+![Nearly Headless Nick demo](nhnick-1.gif)
 
-- **Headless web testing**. Lightning-fast testing without the browser is now possible! Various [test frameworks](http://phantomjs.org/headless-testing.html) such as Jasmine, Capybara, QUnit, Mocha, WebDriver, YUI Test, BusterJS, FuncUnit, Robot Framework, and many others are supported.
-- **Page automation**. [Access and manipulate](http://phantomjs.org/page-automation.html) web pages with the standard DOM API, or with usual libraries like jQuery.
-- **Screen capture**. Programmatically [capture web contents](http://phantomjs.org/screen-capture.html), including CSS, SVG and Canvas. Build server-side web graphics apps, from a screenshot service to a vector chart rasterizer.
-- **Network monitoring**. Automate performance analysis, track [page loading](http://phantomjs.org/network-monitoring.html) and export as standard HAR format.
+## Build
 
-## Features
+The usual PhantomJS build procedure works with no modifications.
 
-- **Multiplatform**, available on major operating systems: Windows, Mac OS X, Linux, and other Unices.
-- **Fast and native implementation** of web standards: DOM, CSS, JavaScript, Canvas, and SVG. No emulation!
-- **Pure headless (no X11) on Linux**, ideal for continuous integration systems. Also runs on Amazon EC2, Heroku, and Iron.io.
-- **Easy to install**: [Download](http://phantomjs.org/download.html), unpack, and start having fun in just 5 minutes.
+## Usage
 
-## Ecosystem
+    phantomjs --show-page=true -platform vnc /path/to/script.js
 
-PhantomJS needs not be used only as a stand-alone tool. Check also some excellent related projects:
+By default, this will listen on 127.0.0.1:5900 for a websocket connection.
+Navigate to http://localhost:5900 using any modern browser and you should see
+a live rendering of the current page.
 
-- [CasperJS](http://casperjs.org) enables easy navigation scripting and common high-level testing.
-- [Poltergeist](https://github.com/jonleighton/poltergeist) allows running Capybara tests headlessly.
-- [Guard::Jasmine](https://github.com/netzpirat/guard-jasmine) automatically tests Jasmine specs on Rails when files are modified.
-- [GhostDriver](http://github.com/detro/ghostdriver/) complements Selenium tests with a PhantomJS WebDriver implementation.
-- [PhantomRobot](https://github.com/datakurre/phantomrobot) runs Robot Framework acceptance tests in the background via PhantomJS.
-- [Mocha-PhantomJS](https://github.com/metaskills/mocha-phantomjs) run Mocha tests using PhantomJS.
+A minimal script.js is given below:
 
-and many others [related projects](http://phantomjs.org/related-projects.html).
+    var page = require('webpage').create();
+    page.open('http://reddit.com', function() { /* phantom.exit() */});
 
-## Questions?
+Note that the call to `phantom.exit()` is omitted, otherwise `phantomjs`
+might exit before you have time to connect to it.
 
-- Explore the complete [documentation](http://phantomjs.org/documentation/).
-- Read tons of [user articles](http://phantomjs.org/buzz.html) on using PhantomJS.
-- Join the [mailing-list](http://groups.google.com/group/phantomjs) and discuss with other PhantomJS fans.
+## Options
 
-PhantomJS is free software/open source, and is distributed under the [BSD license](http://opensource.org/licenses/BSD-3-Clause). It contains third-party code, see the included `third-party.txt` file for the license information on third-party code.
+### PhantomJS options
 
-PhantomJS is created and maintained by [Ariya Hidayat](http://ariya.ofilabs.com/about) (Twitter: [@ariyahidayat](http://twitter.com/ariyahidayat)), with the help of [many contributors](https://github.com/ariya/phantomjs/contributors). Follow the official Twitter stream [@PhantomJS](http://twitter.com/PhantomJS) to get the frequent development updates.
+By default, pages are not rendered to the frame buffer and therefore not visible
+via VNC, even when the VNC platform is selected. Two new methods are available
+in the web page module to show and hide pages on an individual basis.
 
+  * `page.show()` starts rendering `page` to the frame buffer, making it
+    visible via VNC. It replaces the previous page, if any.
+  * `page.hide()` stops rendering `page`.
 
+The `--show-page=true` command line option automatically invokes `show()` on
+all created pages. Only the latest page is visible.
+
+### VNC options
+
+VNC options can be supplied with the `-platform` command line option 
+or the `QT_QPA_PLATFORM` environment variable. The platform string starts with
+`vnc` and a combination of the following options, separated by colons.
+
+  * `size=<width>x<height>` Width and height of the frame buffer.
+    * Default: `size=800x600`
+  * `display=<num>` VNC display number. Server listens to port 5900 + `<num>`
+    * Default: `display=0`
+  * `addr=<IP>` IPv4 address on which the server listens.
+    * Example: `addr=0.0.0.0` listens on all interfaces
+    * Default: `addr=127.0.0.1`
+  * `mode=<str>` One of `websocket` or `raw`. Use `websocket` to connect with
+    a browser-based HTML5 VNC viewer, or `raw` to use a regular VNC client like
+    _vncviewer_ or _Chicken of the VNC_.
+    * Default: `mode=websocket`
+  * `viewer=<URL>` Sets the location of the HTML5 VNC viewer. In `websocket`
+    mode, any regular HTTP request to the listening port will be issued an HTTP
+    redirect to the viewer URL, appended with a hash fragment containing
+    host and port parameters. Websocket requests from other origins are
+    rejected. Note that the colon needs to be URL-encoded since Qt uses it as
+    an option separator. Websocket requests from origins other than the viewer
+    will be rejected.
+    * Default: `viewer=http%3A//pigshell.github.io/noVNC/qtvnc.html`
+  * `maximize=<bool>` Maximize first window. Without this option, apps which
+    don't maximize themselves usually occupy a small window at the top left
+    of the frame buffer.
+    * Default: `maximize=true`
+
+## Gotchas
+
+  * Does not support authentication.
+  * Does not support SSL.
+  * Does not build on Windows.
+  * Occasional crash under high load. I suspect it is due to [this](https://codereview.qt-project.org/#/c/110150/7).
+
+## Future work
+
+  * Show multiple pages in tabs.
+  * Readonly mode to disallow interaction with the page.
