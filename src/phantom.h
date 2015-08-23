@@ -33,7 +33,6 @@
 
 #include <QPointer>
 #include <QtWidgets>
-#include <QWebpage>
 
 #include "filesystem.h"
 #include "encoding.h"

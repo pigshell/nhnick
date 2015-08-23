@@ -73,11 +73,17 @@ void WebView::handleScrollRequested(int x, int y, const QRect& scrollViewRect)
 
 void WebView::mouseMoveEvent(QMouseEvent* ev)
 {
+/*
+ *  Disabling mouse move events for now. They cause drag events to be
+ *  inferred, and the drag handling code in webkit crashes given our 
+ *  "no view" setup.
+
     if (m_webpage) {
         const bool accepted = ev->isAccepted();
         m_qwebpage->event(ev);
         ev->setAccepted(accepted);
     }
+*/
 }
 
 void WebView::mousePressEvent(QMouseEvent* ev)
