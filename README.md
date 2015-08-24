@@ -16,6 +16,9 @@ adds VNC support to Qt 5 as a platform plugin.
 
 The usual PhantomJS build procedure works with no modifications.
 
+Prebuilt binaries for Mac OS and Linux can be downloaded in the
+[releases page](https://github.com/pigshell/nhnick/releases).
+
 ## Usage
 
     phantomjs --show-page=true -platform vnc /path/to/script.js
@@ -82,6 +85,7 @@ or the `QT_QPA_PLATFORM` environment variable. The platform string starts with
   * Does not support authentication.
   * Does not support SSL.
   * Does not build on Windows.
+  * Does not show popup windows.
   * Occasional crash under high load. I suspect it is due to [this](https://codereview.qt-project.org/#/c/110150/7).
 
 ## Future work
